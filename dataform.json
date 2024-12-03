@@ -1,0 +1,7 @@
+{
+  "defaultSchema": "ga4_reports",
+  "assertionSchema": "dataform_assertions",
+  "warehouse": "bigquery",
+  "defaultDatabase": "bigquery-411711",
+  "defaultLocation": "EU"
+}

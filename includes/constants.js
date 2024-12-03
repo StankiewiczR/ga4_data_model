@@ -1,0 +1,23 @@
+const SOURCE_PROJECT = ""
+const SOURCE_DATASET = "analytics_383496534";
+const REPORTING_TIME_ZONE = "Europe/Warsaw";
+const REPORTS_DATASET = "ga4_reports";
+const ATTRIBUTION_DATASET = "ga4_attribution";
+const DATASET_BASIC = "ga4_basic";
+const START_DATE = 20241125;
+const START_DATE_TEST = 20241001;
+const n_date = 3;
+const SESSION_LOOKBACK_WINDOW = 7776000;
+
+module.exports = {
+    SOURCE_PROJECT,
+    SOURCE_DATASET,
+    REPORTING_TIME_ZONE,
+    REPORTS_DATASET,
+    ATTRIBUTION_DATASET,
+    START_DATE,
+    START_DATE_TEST,
+    n_date,
+    DATASET_BASIC,
+    SESSION_LOOKBACK_WINDOW
+};

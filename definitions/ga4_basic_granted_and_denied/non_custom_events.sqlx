@@ -1,0 +1,8 @@
+config {
+    type: "table",
+    schema: constants.ATTRIBUTION_DATASET,
+    tags: ["ga4_attribution", "ga4_reports"],
+    name: "non_custom_events",
+}
+
+  ${helpers.select_non_custom_events()}
