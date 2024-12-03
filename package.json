@@ -1,6 +1,6 @@
 {
   "name": "ga4_reports",
   "dependencies": {
-    "@dataform/core": "2.8.3"
+    "@dataform/core": "3.0.2"
   }
 }
