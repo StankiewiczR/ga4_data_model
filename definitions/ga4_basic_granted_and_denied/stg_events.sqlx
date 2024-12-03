@@ -7,7 +7,6 @@ config {
         clusterBy: [
             "event_name",
             "platform",
-            "stream_id",
             "country",
             "consent"
         ]
@@ -173,7 +172,10 @@ WITH
   WHERE
     _table_suffix LIKE "%intraday%"
     AND _table_suffix NOT LIKE "%fresh%"
-    AND _table_suffix <= REPLACE(CONCAT("intraday_", current_date()), '-', '' )  ),
+    AND _table_suffix <= REPLACE(CONCAT("intraday_", current_date()), '-', '' )  )
+
+
+    SELECT * FROM stg_events
 
 pre_operations {
   DECLARE
