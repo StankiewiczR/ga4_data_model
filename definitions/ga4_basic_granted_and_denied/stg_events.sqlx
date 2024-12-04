@@ -175,9 +175,7 @@ WITH
     AND _table_suffix <= REPLACE(CONCAT("intraday_", current_date()), '-', '' )  )
 
 
-    SELECT *,
-    FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
-    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page
+    SELECT *
      FROM stg_events
 
 pre_operations {
