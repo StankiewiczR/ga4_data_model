@@ -174,7 +174,6 @@ WITH
       *
     FROM
       ${ref('gads')} )
-    --w przypadku gdy source = 'google' i organic = 'cpc' i nie ma campaign_name ani campaign_id to dociągamy te informację z GAds bazując na gclid
   SELECT
     ga.* EXCEPT(collected_traffic_source),
     (
