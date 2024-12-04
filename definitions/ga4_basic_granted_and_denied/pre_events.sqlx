@@ -126,11 +126,6 @@ WITH
       collected_traffic_source.manual_term AS manual_term,
       collected_traffic_source.gclid,
       collected_traffic_source.dclid,
-      gads_gclids.customer_id AS gads_customer_id,
-      gads_gclids.campaign_id AS gads_campaign_id,
-      gads_gclids.campaign_name AS gads_campaign_name,
-      gads_gclids.ad_group_id AS gads_ad_group_id,
-      gads_gclids.ad_group_name AS gads_ad_group_name,
       collected_traffic_source.manual_source_platform AS manual_source_platform,
       collected_traffic_source.manual_creative_format AS manual_creative_format,
       collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
@@ -180,6 +175,8 @@ WITH
     (
     SELECT
       AS STRUCT
+    SOURCE,
+    medium,
     IF
       (collected_traffic_source.manual_source='google'
         AND collected_traffic_source.manual_medium='cpc', IFNULL(collected_traffic_source.manual_campaign_id, CAST(gads_mix.campaign_id AS STRING)), collected_traffic_source.manual_campaign_id) AS manual_campaign_id,
@@ -202,7 +199,6 @@ WITH
     gads_mix
   ON
     ga.collected_traffic_source.gclid = gads_mix.click_view_gclid )
-  --- można bazować na campaign_id i łączyć
 SELECT
   *,
   -- Przesunięcia źródeł ruchu dla wstępnej atrybucji eventowej
