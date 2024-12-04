@@ -20,8 +20,8 @@ WITH
     ga_session_id,
     platform,
     session_traffic_source_last_click,
-    FIRST_VALUE(page_location) OVER (PARTITION BY event_date, user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
-    LAST_VALUE(page_location) OVER (PARTITION BY event_date, user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page,
+    landing_page,
+    exit_page,
     MIN(event_date) AS session_start_date,
     MIN(event_datetime) AS session_start_datetime,
     MAX(event_date) AS session_end_date,
@@ -85,7 +85,9 @@ WITH
     ga_session_key,
     ga_session_id,
     platform,
-    session_traffic_source_last_click)
+    session_traffic_source_last_click,
+    landing_page,
+    exit_page)
 SELECT
   *
 FROM

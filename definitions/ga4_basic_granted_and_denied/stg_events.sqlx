@@ -185,7 +185,7 @@ pre_operations {
     event_date_checkpoint DEFAULT (
     ${
         when(incremental(),
-            `select max(event_date) -3 from ${self()} WHERE event_date >= current_date() - '${constants.n_date}' `,
+            `select max(event_date) -3 from ${self()} WHERE event_date >= current_date() - 10 `,
             `select cast('${constants.START_DATE}' as date format 'yyyymmdd')`)
     }
     );
