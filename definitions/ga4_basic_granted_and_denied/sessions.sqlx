@@ -19,7 +19,7 @@ WITH
     *,
     ROW_NUMBER() OVER (PARTITION BY user_key, ga_session_id ORDER BY event_datetime ASC) AS rn
   FROM
-    ${ref('pre_sessions')} ),
+    ${ref('pre_session')} ),
   -- --
   -- --
   -- --
