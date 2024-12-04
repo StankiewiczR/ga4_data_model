@@ -17,7 +17,7 @@ WITH
   sorted_sessions AS (
   SELECT
     *,
-    ROW_NUMBER() OVER (PARTITION BY user_key, ga_session_id ORDER BY event_datetime ASC) AS rn
+    ROW_NUMBER() OVER (PARTITION BY user_key, ga_session_id ORDER BY session_start_datetime ASC) AS rn
   FROM
     ${ref('pre_session')} ),
   -- --
