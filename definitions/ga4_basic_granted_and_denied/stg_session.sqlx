@@ -101,7 +101,7 @@ WITH
     session_traffic_source_last_click
     )
 SELECT
-  *
+  s.*, landing_page, exit_page
 FROM
   pre_sessions s
 LEFT JOIN pages p
