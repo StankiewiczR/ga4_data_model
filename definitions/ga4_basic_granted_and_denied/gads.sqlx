@@ -14,7 +14,7 @@ config {
     gads_campaign AS (
     SELECT
       DISTINCT campaign_id,
-      FIRST_VALUE(campaign_name) OVER(PARTITION BY campaign_id ORDER BY DATE(_PARTITIONTIME) DESC RANGE BETWEEN UNBOUNDED PRECEDING
+      FIRST_VALUE(campaign_name) OVER(PARTITION BY campaign_id ORDER BY DATE(_data_date) DESC RANGE BETWEEN UNBOUNDED PRECEDING
         AND UNBOUNDED FOLLOWING) AS campaign_name,
     FROM
       ${ref('ads_Campaign_' + constants.GADS_CUSTOMER_ID)}
