@@ -7,7 +7,6 @@ config {
         clusterBy: [
             "event_name",
             "platform",
-            "stream_id",
             "country",
             "consent"
         ]
