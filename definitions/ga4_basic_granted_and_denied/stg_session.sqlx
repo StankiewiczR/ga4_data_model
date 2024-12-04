@@ -12,6 +12,21 @@ config {
 }
 
 WITH
+  pages AS (
+    SELECT 
+    user_key,
+    user_pseudo_id,
+    ga_session_key,
+    ga_session_id,
+    platform,
+    page_location,
+    FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
+    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page
+     FROM
+    ${ref('pre_events')}
+  WHERE
+    event_date >= event_date_checkpoint
+  ),
   pre_sessions AS (
   SELECT
     user_key,
@@ -20,8 +35,6 @@ WITH
     ga_session_id,
     platform,
     session_traffic_source_last_click,
-    landing_page,
-    exit_page,
     MIN(event_date) AS session_start_date,
     MIN(event_datetime) AS session_start_datetime,
     MAX(event_date) AS session_end_date,
@@ -85,13 +98,18 @@ WITH
     ga_session_key,
     ga_session_id,
     platform,
-    session_traffic_source_last_click,
-    landing_page,
-    exit_page)
+    session_traffic_source_last_click
+    )
 SELECT
   *
 FROM
-  pre_sessions
+  pre_sessions s
+LEFT JOIN pages p
+ON s.user_key = p.user_key
+AND s.user_pseudo_id = p.user_pseudo_id
+AND s.ga_session_key = p.ga_session_key
+AND s.ga_session_id = p.ga_session_id
+AND s.platform = p.platform
 
 pre_operations {
     DECLARE
