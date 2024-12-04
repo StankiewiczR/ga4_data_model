@@ -129,6 +129,7 @@ WITH
       collected_traffic_source.manual_source_platform AS manual_source_platform,
       collected_traffic_source.manual_creative_format AS manual_creative_format,
       collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
+      collected_traffic_source.srsltid AS srsltid
       ) AS collected_traffic_source,
     -- -- Utworzenie "event_sort_order" dla hierarchii zdarzeń pod atrybucje -- --
     CASE
