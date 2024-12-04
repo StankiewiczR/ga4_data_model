@@ -112,6 +112,7 @@ AND s.user_pseudo_id = p.user_pseudo_id
 AND s.ga_session_key = p.ga_session_key
 AND s.ga_session_id = p.ga_session_id
 AND s.platform = p.platform
+GROUP BY ALL
 
 pre_operations {
     DECLARE
