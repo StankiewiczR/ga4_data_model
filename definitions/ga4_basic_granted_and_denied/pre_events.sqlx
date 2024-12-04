@@ -175,14 +175,14 @@ WITH
     (
     SELECT
       AS STRUCT
-    SOURCE,
-    medium,
+    collected_traffic_source.SOURCE,
+    collected_traffic_source.medium,
     IF
-      (collected_traffic_source.manual_source='google'
-        AND collected_traffic_source.manual_medium='cpc', IFNULL(collected_traffic_source.manual_campaign_id, CAST(gads_mix.campaign_id AS STRING)), collected_traffic_source.manual_campaign_id) AS manual_campaign_id,
+      (collected_traffic_source.SOURCE='google'
+        AND collected_traffic_source.medium='cpc', IFNULL(collected_traffic_source.manual_campaign_id, CAST(gads_mix.campaign_id AS STRING)), collected_traffic_source.manual_campaign_id) AS manual_campaign_id,
     IF
-      (collected_traffic_source.manual_source='google'
-        AND collected_traffic_source.manual_medium='cpc', IFNULL(collected_traffic_source.manual_campaign_name, CAST(gads_mix.campaign_name AS STRING)), collected_traffic_source.manual_campaign_id) AS manual_campaign_name,
+      (collected_traffic_source.SOURCE='google'
+        AND collected_traffic_source.medium='cpc', IFNULL(collected_traffic_source.manual_campaign_name, CAST(gads_mix.campaign_name AS STRING)), collected_traffic_source.manual_campaign_id) AS manual_campaign_name,
       collected_traffic_source.manual_source AS manual_source,
       collected_traffic_source.manual_medium AS manual_medium,
       collected_traffic_source.manual_content AS manual_content,
