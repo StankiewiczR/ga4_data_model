@@ -48,7 +48,7 @@ WITH
       collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
       IFNULL(REGEXP_EXTRACT(page_location, r'gclid=([^&]*)'), collected_traffic_source.gclid) AS gclid,
       IFNULL(REGEXP_EXTRACT(page_location, r'dclid=([^&]*)'), collected_traffic_source.dclid) AS dclid,
-      IFNULL(REGEXP_EXTRACT(page_location, r'srsltid=([^&]*)'), collected_traffic_source.srsltid,) AS srsltid ) AS collected_traffic_source
+      IFNULL(REGEXP_EXTRACT(page_location, r'srsltid=([^&]*)'), collected_traffic_source.srsltid) AS srsltid ) AS collected_traffic_source
   FROM
     ${ref('stg_events')} ),
   pre_events AS (
@@ -142,12 +142,13 @@ WITH
       'campaign_details') THEN 1
       WHEN stg_events.event_name IN ('first_visit', 'first_open') THEN 0
       ELSE 2
+     END AS event_sort_order,
     -- -- Utworzenie is_key_events
     CASE
       WHEN is_key_events.event_name IS NULL THEN NULL
       ELSE is_key_events.event_name
   END
-    AS event_sort_order
+    AS is_key_event
   FROM
     stg_events_modified AS stg_events
   LEFT JOIN
@@ -186,7 +187,7 @@ WITH
       (collected_traffic_source.manual_source='google'
         AND collected_traffic_source.manual_medium='cpc', IFNULL(collected_traffic_source.manual_campaign_name, CAST(gads_mix.campaign_name AS STRING)), collected_traffic_source.manual_campaign_id) AS manual_campaign_name,
       collected_traffic_source.manual_source AS manual_source,
-      collected_traffic_source collected_traffic_source.manual_medium AS manual_medium,
+      collected_traffic_source.manual_medium AS manual_medium,
       collected_traffic_source.manual_content AS manual_content,
       collected_traffic_source.manual_term AS manual_term,
       collected_traffic_source.manual_source_platform AS manual_source_platform,
