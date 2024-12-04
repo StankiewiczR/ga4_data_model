@@ -1,0 +1,100 @@
+config {
+    type: "incremental",
+    schema: constants.ATTRIBUTION_DATASET,
+    tags: ["ga4_attribution", "ga4_reports"],
+    bigquery: {
+        partitionBy: "session_start_date",
+        clusterBy: [
+            "user_key",
+            "ga_session_key"
+        ]
+    }
+}
+
+WITH
+  pre_sessions AS (
+  SELECT
+    user_key,
+    user_pseudo_id,
+    ga_session_key,
+    ga_session_id,
+    platform,
+    FIRST_VALUE(page_location) OVER (PARTITION BY event_date, user_pseudo_id, session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
+    LAST_VALUE(page_location) OVER (PARTITION BY event_date, user_pseudo_id, session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page,
+    MIN(event_date) AS session_start_date,
+    MIN(event_datetime) AS session_start_datetime,
+    MAX(event_date) AS session_end_date,
+    MAX(event_datetime) AS session_end_datetime,
+    LOGICAL_OR(event_name = 'session_start') AS has_session_start_event,
+    MAX(entrances) AS has_entrances, 
+    MIN(DATETIME(TIMESTAMP_SECONDS(CAST(user_first_touch_timestamp / 1000000 AS int64)), '${constants.REPORTING_TIME_ZONE}')) AS user_first_visit_datetime,
+     ARRAY_AGG(
+    IF
+      (entrances = 1, page_location, NULL)
+    ORDER BY
+      event_timestamp ASC
+    LIMIT
+      1 )[SAFE_OFFSET(0)] AS first_page,
+    MAX(session_engaged) AS session_engaged,
+    sum(engagement_time_msec)/1000 as engagement_time_seconds,
+    -- Pierwsze źródło w sesji
+    ARRAY_AGG(
+    IF
+      (COALESCE(NULLIF(collected_traffic_source.source, '(direct)'), NULLIF(collected_traffic_source.medium, '(none)'), NULLIF(collected_traffic_source.manual_campaign_name, '(direct)')) IS NOT NULL, collected_traffic_source, NULL)
+    ORDER BY
+      event_timestamp ASC, event_sort_order ASC
+    LIMIT
+      1 )[SAFE_OFFSET(0)] AS first_traffic_source,
+
+    -- Ostatnie źródło w sesji
+      ARRAY_AGG(
+    IF
+      (COALESCE(NULLIF(collected_traffic_source.source, '(direct)'), NULLIF(collected_traffic_source.medium, '(none)'), NULLIF(collected_traffic_source.manual_campaign_name, '(direct)')) IS NOT NULL, collected_traffic_source, NULL) 
+    ORDER BY
+      event_timestamp DESC, event_sort_order ASC
+    LIMIT
+      1 )[SAFE_OFFSET(0)] AS last_traffic_source,
+
+    -- Ostatnie non-direct źródło w sesji
+    ARRAY_AGG(
+    IF
+      (COALESCE(NULLIF(collected_traffic_source.source, '(direct)'), NULLIF(collected_traffic_source.medium, '(none)'), NULLIF(collected_traffic_source.manual_campaign_name, '(direct)')) IS NOT NULL, collected_traffic_source, NULL) IGNORE NULLS
+    ORDER BY
+      event_timestamp DESC, event_sort_order ASC
+    LIMIT
+      1 )[SAFE_OFFSET(0)] AS last_non_null_traffic_source,
+    COUNTIF(event_name = 'page_view') AS page_view_count,
+    COUNTIF(event_name = 'view_item') AS item_view_count,
+    COUNTIF(event_name = 'add_to_cart') AS add_to_cart_count,
+    COUNTIF(event_name = 'begin_checkout') AS begin_checkout_count,
+    COUNTIF(event_name = 'add_shipping_info') AS add_shipping_info_count,
+    COUNTIF(event_name = 'add_payment_info') AS add_payment_info_count,
+    COUNTIF(event_name = 'purchase') AS purchase_count,
+    SUM(IF(event_name = 'purchase', ecommerce.purchase_revenue, 0)) AS session_revenue
+  FROM
+    ${ref('pre_events')}
+  WHERE
+    event_date >= event_date_checkpoint
+    AND
+ --- tutaj do zastanowienia bo to nam ucina dane zanomizowane
+  ga_session_key IS NOT NULL
+  GROUP BY
+    user_key,
+    user_pseudo_id,
+    ga_session_key,
+    ga_session_id)
+SELECT
+  *
+FROM
+  pre_sessions
+
+pre_operations {
+    DECLARE
+        event_date_checkpoint DEFAULT (
+        ${
+            when(incremental(),
+                `SELECT MAX(session_start_date) - 3 FROM ${self()} WHERE session_start_date >= current_date() - 10`,
+                `SELECT PARSE_DATE('%Y%m%d', '${constants.START_DATE}')`)
+        }
+        ); ${when(incremental(), `DELETE FROM ${self()} WHERE session_start_date >= event_date_checkpoint`)}
+}
