@@ -176,8 +176,8 @@ WITH
 
 
     SELECT *,
-    FIRST_VALUE(page_location) OVER (PARTITION BY event_date, user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
-    LAST_VALUE(page_location) OVER (PARTITION BY event_date, user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page
+    FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
+    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page
      FROM stg_events
 
 pre_operations {
