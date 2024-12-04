@@ -50,10 +50,10 @@ WITH
       IF
         (COALESCE(NULLIF(last_non_null_traffic_source.source, '(direct)'), NULLIF(last_non_null_traffic_source.medium, '(none)'), NULLIF(last_non_null_traffic_source.manual_campaign_name, '(direct)')) IS NOT NULL, last_non_null_traffic_source, NULL) IGNORE NULLS) OVER(PARTITION BY user_key ORDER BY ga_session_id RANGE BETWEEN ${constants.SESSION_LOOKBACK_WINDOW} PRECEDING AND 1 PRECEDING ), first_traffic_source ) AS last_non_direct_traffic_source
   FROM
-    pre_sessions )
+    sessions )
 
 
 SELECT
   *
 FROM
-  sessions
+  last_non_direct_traffic_source
