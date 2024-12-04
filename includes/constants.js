@@ -9,6 +9,13 @@ const START_DATE_TEST = 20241001;
 const n_date = 3;
 const SESSION_LOOKBACK_WINDOW = 7776000;
 
+
+const GADS_GET_DATA = true;
+const GADS_SOURCE_PROJECT = "bigquery-411711";
+const GADS_SOURCE_DATASET = "google_ads_raw";
+const GADS_CUSTOMER_ID = "2155702465";
+
+
 module.exports = {
     SOURCE_PROJECT,
     SOURCE_DATASET,
@@ -19,5 +26,10 @@ module.exports = {
     START_DATE_TEST,
     n_date,
     DATASET_BASIC,
-    SESSION_LOOKBACK_WINDOW
+    SESSION_LOOKBACK_WINDOW,
+    GADS_GET_DATA,
+    GADS_SOURCE_PROJECT,
+    GADS_SOURCE_DATASET,
+    GADS_CUSTOMER_ID
+
 };
