@@ -99,7 +99,7 @@ WITH
     user_pseudo_id,
     ga_session_key,
     ga_session_id,
-    platform,
+    platform
    -- session_traffic_source_last_click
     )
 SELECT
