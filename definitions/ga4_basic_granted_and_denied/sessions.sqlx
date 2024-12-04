@@ -1,0 +1,59 @@
+config {
+    type: "table",
+    schema: constants.ATTRIBUTION_DATASET,
+    tags: ["ga4_attribution"],
+    bigquery: {
+        partitionBy: "session_start_date",
+        clusterBy: [
+            "user_key",
+            "ga_session_key"
+        ]
+    }
+}
+
+-- --
+-- -- Zabezpieczenie przed występowaniem tych samych wierszy dla aplikacji - https://monosnap.com/file/3cfCb1shV2XKGLeDxl727RXIcL0VAc
+WITH
+  sorted_sessions AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (PARTITION BY user_key, ga_session_id ORDER BY event_datetime ASC) AS rn
+  FROM
+    ${ref('pre_sessions')} ),
+  -- --
+  -- --
+  -- --
+  sessions AS (
+  SELECT
+    user_key,
+    user_pseudo_id,
+    ga_session_key,
+    ga_session_id,
+    session_start_datetime,
+    session_start_date,
+    has_session_start_event,
+    user_first_visit_datetime,
+    last_non_null_traffic_source,
+    first_traffic_source
+  FROM
+    sorted_sessions
+  WHERE
+    rn = 1),
+  -- --
+  -- --
+  -- --
+  last_non_direct_traffic_source AS (
+  SELECT
+    *,
+  IF
+    (COALESCE(NULLIF(first_traffic_source.source, '(direct)'), NULLIF(first_traffic_source.medium, '(none)'), NULLIF(first_traffic_source.manual_campaign_name, '(direct)')) IS NULL, LAST_VALUE(
+      IF
+        (COALESCE(NULLIF(last_non_null_traffic_source.source, '(direct)'), NULLIF(last_non_null_traffic_source.medium, '(none)'), NULLIF(last_non_null_traffic_source.manual_campaign_name, '(direct)')) IS NOT NULL, last_non_null_traffic_source, NULL) IGNORE NULLS) OVER(PARTITION BY user_key ORDER BY ga_session_id RANGE BETWEEN ${constants.SESSION_LOOKBACK_WINDOW} PRECEDING AND 1 PRECEDING ), first_traffic_source ) AS last_non_direct_traffic_source
+  FROM
+    pre_sessions )
+
+
+SELECT
+  *
+FROM
+  sessions
