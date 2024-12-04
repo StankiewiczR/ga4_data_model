@@ -82,7 +82,8 @@ WITH
     user_key,
     user_pseudo_id,
     ga_session_key,
-    ga_session_id)
+    ga_session_id,
+    platform)
 SELECT
   *
 FROM
