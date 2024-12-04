@@ -10,7 +10,10 @@ config {
       DISTINCT click_view_gclid,
       campaign_id
     FROM
-      ${ref('ads_ClickStats_' + constants.GADS_CUSTOMER_ID)} ),
+      ${ref('ads_ClickStats_' + constants.GADS_CUSTOMER_ID)} 
+    WHERE
+    _data_date >= date_checkpoint
+    ),
     gads_campaign AS (
     SELECT
       DISTINCT campaign_id,
@@ -18,6 +21,8 @@ config {
         AND UNBOUNDED FOLLOWING) AS campaign_name,
     FROM
       ${ref('ads_Campaign_' + constants.GADS_CUSTOMER_ID)}
+    WHERE
+    _data_date >= date_checkpoint  
       )
     SELECT
       *
@@ -27,4 +32,17 @@ config {
       gads_campaign
     USING
       (campaign_id) 
+
+
+
+pre_operations {
+  DECLARE
+    date_checkpoint DEFAULT (
+    ${
+        when(incremental(),
+            `select max(date) - 3 from ${self()} where date >= current_date() - 10`,
+            `select cast('${constants.START_DATE}' as date format 'yyyymmdd')`)
+    }
+    ); ${when(incremental(), `DELETE FROM ${self()} WHERE date >= date_checkpoint`)}
+}
 
