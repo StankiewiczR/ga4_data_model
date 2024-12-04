@@ -26,6 +26,7 @@ WITH
     ${ref('pre_events')}
   WHERE
     event_date >= event_date_checkpoint
+  GROUP BY 1,2,3,4,5,6
   ),
   pre_sessions AS (
   SELECT
