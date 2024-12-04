@@ -30,7 +30,7 @@ WITH
     MIN(DATETIME(TIMESTAMP_SECONDS(CAST(user_first_touch_timestamp / 1000000 AS int64)), '${constants.REPORTING_TIME_ZONE}')) AS user_first_visit_datetime,
      ARRAY_AGG(
     IF
-      (entrances = 1, page_location, NULL)
+      (entrances = '1', page_location, NULL)
     ORDER BY
       event_timestamp ASC
     LIMIT
