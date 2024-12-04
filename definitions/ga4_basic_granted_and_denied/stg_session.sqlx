@@ -36,7 +36,7 @@ WITH
     ga_session_key,
     ga_session_id,
     platform,
-  ---  session_traffic_source_last_click,
+  --- ten parametr rozwarstwia dane - trzeba go przechowywać w osobnej tabelce =  session_traffic_source_last_click,
     MIN(event_date) AS session_start_date,
     MIN(event_datetime) AS session_start_datetime,
     MAX(event_date) AS session_end_date,
