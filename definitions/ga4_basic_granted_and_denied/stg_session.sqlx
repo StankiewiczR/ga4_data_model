@@ -36,7 +36,7 @@ WITH
     ga_session_key,
     ga_session_id,
     platform,
-    session_traffic_source_last_click,
+  ---  session_traffic_source_last_click,
     MIN(event_date) AS session_start_date,
     MIN(event_datetime) AS session_start_datetime,
     MAX(event_date) AS session_end_date,
@@ -100,7 +100,7 @@ WITH
     ga_session_key,
     ga_session_id,
     platform,
-    session_traffic_source_last_click
+   -- session_traffic_source_last_click
     )
 SELECT
   s.*, landing_page, exit_page
