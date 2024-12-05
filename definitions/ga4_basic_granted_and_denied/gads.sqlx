@@ -44,7 +44,7 @@ pre_operations {
     ${
         when(incremental(),
             `select max(date) - 3 from ${self()} where date >= current_date() - 10`,
-            `select cast('${constants.START_DATE}' as date format 'yyyymmdd')`)
+            `select cast('${constants.START_DATE_TEST}' as date format 'yyyymmdd')`)
     }
     ); ${when(incremental(), `DELETE FROM ${self()} WHERE date >= date_checkpoint`)}
 }
