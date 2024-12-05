@@ -9,6 +9,7 @@ const START_DATE_TEST = 20241001;
 const n_date = 3;
 const SESSION_LOOKBACK_WINDOW = 7776000;
 
+// zmienne dla GAds
 
 const GADS_GET_DATA = true;
 const GADS_SOURCE_PROJECT = "bigquery-411711";

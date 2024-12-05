@@ -1,6 +1,13 @@
 config {
     type: "table",
-    schema: constants.DATASET_BASIC
+    schema: constants.ATTRIBUTION_DATASET,
+    tags: ["ga4_attribution"],
+    bigquery: {
+        clusterBy: [
+            "campaign_id",
+            "campaign_name"
+        ]
+    }
 }
 
 
@@ -17,7 +24,7 @@ config {
     gads_campaign AS (
     SELECT
       DISTINCT campaign_id,
-      FIRST_VALUE(campaign_name) OVER(PARTITION BY campaign_id ORDER BY DATE(_data_date) DESC RANGE BETWEEN UNBOUNDED PRECEDING
+      FIRST_VALUE(campaign_name) OVER(PARTITION BY campaign_id ORDER BY _data_date DESC ROWS BETWEEN UNBOUNDED PRECEDING
         AND UNBOUNDED FOLLOWING) AS campaign_name,
     FROM
       ${ref('ads_Campaign_' + constants.GADS_CUSTOMER_ID)}
@@ -27,11 +34,10 @@ config {
     SELECT
       *
     FROM
-      gads_click
+      gads_click g
     LEFT JOIN
-      gads_campaign
-    USING
-      (campaign_id) 
+      gads_campaign c
+    ON g.campaign_id = c.campaign_id
 
 
 
