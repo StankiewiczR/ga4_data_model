@@ -5,4 +5,4 @@ config {
     name: "is_key_events",
 }
 
-  ${helpers.select_non_custom_events()}
+  ${helpers.select_is_key_events()}

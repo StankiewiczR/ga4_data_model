@@ -171,11 +171,11 @@ function select_is_key_events(){
     let select_statement = '';
     let i = 0;
     let { is_key_events } = require("./is_key_events.js");
-    let non_custom_events_length = Object.keys(non_custom_events).length;
-    for (row of non_custom_events) {
+    let is_key_events_length = Object.keys(is_key_events).length;
+    for (row of is_key_events) {
         i++;
         select_statement = select_statement.concat(`select "` + row.event_name + `" as event_name`);
-        if (i < non_custom_events_length) {
+        if (i < is_key_events_length) {
             select_statement = select_statement.concat(` union distinct `)
         }
     }
