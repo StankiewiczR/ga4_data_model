@@ -10,36 +10,33 @@ config {
     }
 }
 
-
-  WITH
-    gads_click AS (
-    SELECT
-      DISTINCT click_view_gclid,
-      campaign_id
-    FROM
-      ${ref('ads_ClickStats_' + constants.GADS_CUSTOMER_ID)} 
-    WHERE
-    _data_date >= date_checkpoint
-    ),
-    gads_campaign AS (
-    SELECT
-      DISTINCT campaign_id,
-      FIRST_VALUE(campaign_name) OVER(PARTITION BY campaign_id ORDER BY _data_date DESC ROWS BETWEEN UNBOUNDED PRECEDING
-        AND UNBOUNDED FOLLOWING) AS campaign_name,
-    FROM
-      ${ref('ads_Campaign_' + constants.GADS_CUSTOMER_ID)}
-    WHERE
-    _data_date >= date_checkpoint  
-      )
-    SELECT
-      *
-    FROM
-      gads_click g
-    LEFT JOIN
-      gads_campaign c
-    ON g.campaign_id = c.campaign_id
-
-
+WITH
+  gads_click AS (
+  SELECT
+    DISTINCT click_view_gclid,
+    campaign_id
+  FROM
+    ${ref('ads_ClickStats_' + constants.GADS_CUSTOMER_ID)}
+  WHERE
+    _data_date >= date_checkpoint ),
+  gads_campaign AS (
+  SELECT
+    DISTINCT campaign_id,
+    FIRST_VALUE(campaign_name) OVER(PARTITION BY campaign_id ORDER BY _data_date DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS campaign_name,
+  FROM
+    ${ref('ads_Campaign_' + constants.GADS_CUSTOMER_ID)}
+  WHERE
+    _data_date >= date_checkpoint )
+SELECT
+  click_view_gclid,
+  g.campaign_id,
+  campaign_name
+FROM
+  gads_click g
+LEFT JOIN
+  gads_campaign c
+ON
+  g.campaign_id = c.campaign_id
 
 pre_operations {
   DECLARE
@@ -51,4 +48,3 @@ pre_operations {
     }
     ); ${when(incremental(), `DELETE FROM ${self()} WHERE date >= date_checkpoint`)}
 }
-
