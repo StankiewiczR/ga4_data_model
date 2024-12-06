@@ -12,23 +12,6 @@ config {
 }
 
 WITH
-  pages AS (
-    SELECT 
-    user_key,
-    event_timestamp,
-    user_pseudo_id,
-    ga_session_key,
-    ga_session_id,
-    platform,
-    page_location,
-    FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
-    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page
-     FROM
-    ${ref('events')}
-  WHERE
-    event_date >= event_date_checkpoint
-  GROUP BY 1,2,3,4,5,6,7
-  ),
   pre_sessions AS (
   SELECT
     user_key,
@@ -36,6 +19,8 @@ WITH
     ga_session_key,
     ga_session_id,
     platform,
+    landing_page,
+    exit_page,
   --- ten parametr rozwarstwia dane - trzeba go przechowywać w osobnej tabelce =  session_traffic_source_last_click,
     MIN(event_date) AS session_start_date,
     MIN(event_datetime) AS session_start_datetime,
@@ -100,20 +85,16 @@ WITH
     user_pseudo_id,
     ga_session_key,
     ga_session_id,
-    platform
+    platform,
+    landing_page,
+    exit_page
    -- session_traffic_source_last_click
-    )
+)    
 SELECT
-  s.*, landing_page, exit_page
+  *
 FROM
-  pre_sessions s
-LEFT JOIN pages p
-ON s.user_key = p.user_key
-AND s.user_pseudo_id = p.user_pseudo_id
-AND s.ga_session_key = p.ga_session_key
-AND s.ga_session_id = p.ga_session_id
-AND s.platform = p.platform
-GROUP BY ALL
+  pre_sessions 
+
 
 pre_operations {
     DECLARE
