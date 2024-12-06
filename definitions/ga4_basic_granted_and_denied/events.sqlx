@@ -1,0 +1,237 @@
+config {
+    type: "incremental",
+    schema: constants.DATASET_BASIC,
+    tags: ["ga4_basic", "ga4_reports"],
+    bigquery: {
+        partitionBy: "event_date",
+        clusterBy: [
+            "event_name",
+            "platform",
+            "country",
+            "consent"
+        ]
+    }
+}
+
+  -- --
+  -- --
+  -- -- Wyciągamy informacje o źródle ruchu z page_location
+WITH
+  stg_events_modified AS (
+  SELECT
+    * EXCEPT(collected_traffic_source),
+    --    (
+    --    SELECT
+    --      AS STRUCT IFNULL(collected_traffic_source.manual_campaign_id, REGEXP_EXTRACT(page_location, r'utm_id=([^&]*)')) AS manual_campaign_id,
+    --      IFNULL(collected_traffic_source.manual_campaign_name, URLDECODE(REGEXP_EXTRACT(page_location, r'utm_campaign=([^&]*)'))) AS manual_campaign_name,
+    --      IFNULL(collected_traffic_source.manual_source, REGEXP_EXTRACT(page_location, r'utm_source=([^&]*)')) AS manual_source,
+    --      IFNULL(collected_traffic_source.manual_medium, REGEXP_EXTRACT(page_location, r'utm_medium=([^&]*)')) AS manual_medium,
+    --      IFNULL(collected_traffic_source.manual_content, URLDECODE(REGEXP_EXTRACT(page_location, r'utm_content=([^&]*)'))) AS manual_content,
+    --      IFNULL(collected_traffic_source.manual_term, URLDECODE(REGEXP_EXTRACT(page_location, r'utm_term=([^&]*)'))) AS manual_term,
+    --      collected_traffic_source.manual_source_platform AS manual_source_platform,
+    --      collected_traffic_source.manual_creative_format AS manual_creative_format,
+    --      collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
+    --      IFNULL(collected_traffic_source.gclid, REGEXP_EXTRACT(page_location, r'gclid=([^&]*)')) AS gclid,
+    --      IFNULL(collected_traffic_source.dclid, REGEXP_EXTRACT(page_location, r'dclid=([^&]*)')) AS dclid,
+    --      IFNULL(collected_traffic_source.srsltid, REGEXP_EXTRACT(page_location, r'srsltid=([^&]*)')) AS srsltid ) AS collected_traffic_source,
+    (
+    SELECT
+      AS STRUCT IFNULL(REGEXP_EXTRACT(page_location, r'utm_id=([^&]*)'), collected_traffic_source.manual_campaign_id) AS manual_campaign_id,
+      IFNULL(URLDECODE(REGEXP_EXTRACT(page_location, r'utm_campaign=([^&]*)')), collected_traffic_source.manual_campaign_name) AS manual_campaign_name,
+      IFNULL(REGEXP_EXTRACT(page_location, r'utm_source=([^&]*)'), collected_traffic_source.manual_source ) AS manual_source,
+      IFNULL(REGEXP_EXTRACT(page_location, r'utm_medium=([^&]*)'), collected_traffic_source.manual_medium ) AS manual_medium,
+      IFNULL(URLDECODE(REGEXP_EXTRACT(page_location, r'utm_content=([^&]*)')), collected_traffic_source.manual_content ) AS manual_content,
+      IFNULL(URLDECODE(REGEXP_EXTRACT(page_location, r'utm_term=([^&]*)')), collected_traffic_source.manual_term ) AS manual_term,
+      collected_traffic_source.manual_source_platform AS manual_source_platform,
+      collected_traffic_source.manual_creative_format AS manual_creative_format,
+      collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
+      IFNULL(REGEXP_EXTRACT(page_location, r'gclid=([^&]*)'), collected_traffic_source.gclid) AS gclid,
+      IFNULL(REGEXP_EXTRACT(page_location, r'dclid=([^&]*)'), collected_traffic_source.dclid) AS dclid,
+      IFNULL(REGEXP_EXTRACT(page_location, r'srsltid=([^&]*)'), collected_traffic_source.srsltid) AS srsltid ) AS collected_traffic_source
+  FROM
+    ${ref('pre_events')} ),
+  pre_events AS (
+  SELECT
+    stg_events.* EXCEPT( collected_traffic_source,
+      event_traffic_source,
+      event_timestamp,
+      event_datetime),
+    ${helpers.adjust_campaign_timestamp('stg_events')} AS event_timestamp,
+    DATETIME(TIMESTAMP_SECONDS(CAST(${helpers.adjust_campaign_timestamp('stg_events')} / 1000000 AS int64)), '${constants.REPORTING_TIME_ZONE}') AS event_datetime,
+    TO_BASE64(MD5(CONCAT(user_pseudo_id, stream_id))) AS user_key,
+    TO_BASE64(MD5(CONCAT(user_pseudo_id, stream_id, ga_session_id))) AS ga_session_key,
+    -- --
+    (
+    SELECT
+      AS STRUCT event_traffic_source.source AS SOURCE,
+      event_traffic_source.medium AS medium,
+      event_traffic_source.campaign AS campaign,
+      event_traffic_source.content AS content,
+      event_traffic_source.term AS term,
+      event_traffic_source.gclid AS gclid,
+      event_traffic_source.dclid AS dclid ) AS event_traffic_source,
+    (
+    SELECT
+      AS STRUCT
+      CASE
+        WHEN (stg_events.event_name IN ('first_visit', 'first_open') AND stg_events.collected_traffic_source.manual_source IS NULL) THEN stg_events.traffic_source.source
+        WHEN (stg_events.collected_traffic_source.gclid IS NOT NULL
+        AND stg_events.event_name = 'firebase_campaign') THEN 'google'
+        WHEN (stg_events.collected_traffic_source.gclid IS NOT NULL AND stg_events.collected_traffic_source.manual_source IN ('google', 'imasdk.googleapis.com', 'googleads.g.doubleclick.net', 'pagead2.googlesyndication.com')) OR (stg_events.page_location LIKE '%gbraid%' OR stg_events.page_location LIKE '%wbraid%') THEN ( CASE
+          WHEN 'manual_source' IN ('manual_campaign_name') THEN (
+          CASE
+            WHEN NULL IS NULL THEN 'google'
+            ELSE NULL
+        END
+          )
+          WHEN 'manual_source' IN ('manual_source') THEN ( IFNULL(stg_events.collected_traffic_source.manual_source, 'google') )
+          ELSE 'google'
+      END
+        )
+        WHEN stg_events.collected_traffic_source.dclid IS NOT NULL AND stg_events.collected_traffic_source.gclid IS NULL THEN 'dbm'
+        ELSE stg_events.collected_traffic_source.manual_source
+    END
+      AS SOURCE,
+      -- --
+      CASE
+        WHEN (stg_events.event_name IN ('first_visit', 'first_open') AND stg_events.collected_traffic_source.manual_medium IS NULL) THEN stg_events.traffic_source.medium
+        WHEN (stg_events.collected_traffic_source.gclid IS NOT NULL
+        AND stg_events.event_name = 'firebase_campaign') THEN 'cpc'
+        WHEN (stg_events.collected_traffic_source.gclid IS NOT NULL AND stg_events.collected_traffic_source.manual_source IN ('google', 'imasdk.googleapis.com', 'googleads.g.doubleclick.net', 'pagead2.googlesyndication.com')) OR (stg_events.page_location LIKE '%gbraid%' OR stg_events.page_location LIKE '%wbraid%') THEN ( CASE
+          WHEN 'manual_medium' IN ('manual_campaign_name') THEN (
+          CASE
+            WHEN NULL IS NULL THEN 'cpc'
+            ELSE NULL
+        END
+          )
+          WHEN 'manual_medium' IN ('manual_source') THEN ( IFNULL(stg_events.collected_traffic_source.manual_medium, 'cpc') )
+          ELSE 'cpc'
+      END
+        )
+        WHEN stg_events.collected_traffic_source.dclid IS NOT NULL AND stg_events.collected_traffic_source.gclid IS NULL THEN 'cpm'
+        ELSE stg_events.collected_traffic_source.manual_medium
+    END
+      AS medium,
+      -- --
+      CASE
+        WHEN stg_events.event_name IN ('first_visit', 'first_open') AND stg_events.collected_traffic_source.manual_campaign_name IS NULL THEN stg_events.traffic_source.campaign
+        ELSE stg_events.collected_traffic_source.manual_campaign_name
+    END
+      AS manual_campaign_name,
+      collected_traffic_source.manual_campaign_id AS manual_campaign_id,
+      collected_traffic_source.manual_source AS manual_source,
+      collected_traffic_source.manual_medium AS manual_medium,
+      collected_traffic_source.manual_content AS manual_content,
+      collected_traffic_source.manual_term AS manual_term,
+      collected_traffic_source.gclid,
+      collected_traffic_source.dclid,
+      collected_traffic_source.manual_source_platform AS manual_source_platform,
+      collected_traffic_source.manual_creative_format AS manual_creative_format,
+      collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
+      collected_traffic_source.srsltid AS srsltid
+      ) AS collected_traffic_source,
+    -- -- Utworzenie "event_sort_order" dla hierarchii zdarzeń pod atrybucje -- --
+    CASE
+      WHEN (non_custom_events.event_name IS NULL AND stg_events.event_traffic_source.medium IS NULL) THEN 3
+      WHEN stg_events.event_name IN ('firebase_campaign',
+      'campaign_details') THEN 1
+      WHEN stg_events.event_name IN ('first_visit', 'first_open') THEN 0
+      ELSE 2
+     END AS event_sort_order,
+    -- -- Utworzenie is_key_events
+    CASE
+      WHEN is_key_events.event_name IS NULL THEN NULL
+      ELSE is_key_events.event_name
+  END
+    AS is_key_event
+  FROM
+    stg_events_modified AS stg_events
+  LEFT JOIN
+    ${ref('non_custom_events')} AS non_custom_events
+  ON
+    stg_events.event_name = non_custom_events.event_name
+  LEFT JOIN
+    ${ref('is_key_events')} AS is_key_events
+  ON
+    stg_events.event_name = is_key_events.event_name),
+  -- --
+  -- --
+  -- --
+  stg_gclid AS (
+  WITH
+    ga AS(
+    SELECT
+      *
+    FROM
+      pre_events ),
+    
+    gads_mix AS (
+    SELECT
+      *
+    FROM
+      ${ref('gads')} )
+  SELECT
+    ga.* EXCEPT(collected_traffic_source),
+    (
+    SELECT
+      AS STRUCT
+    collected_traffic_source.SOURCE,
+    collected_traffic_source.medium,
+    IF
+      (collected_traffic_source.SOURCE='google'
+        AND collected_traffic_source.medium='cpc', IFNULL(collected_traffic_source.manual_campaign_id, CAST(gads_mix.campaign_id AS STRING)), collected_traffic_source.manual_campaign_id) AS manual_campaign_id,
+    IF
+      (collected_traffic_source.SOURCE='google'
+        AND collected_traffic_source.medium='cpc', IFNULL(collected_traffic_source.manual_campaign_name, CAST(gads_mix.campaign_name AS STRING)), collected_traffic_source.manual_campaign_id) AS manual_campaign_name,
+      collected_traffic_source.manual_source AS manual_source,
+      collected_traffic_source.manual_medium AS manual_medium,
+      collected_traffic_source.manual_content AS manual_content,
+      collected_traffic_source.manual_term AS manual_term,
+      collected_traffic_source.manual_source_platform AS manual_source_platform,
+      collected_traffic_source.manual_creative_format AS manual_creative_format,
+      collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
+      collected_traffic_source.gclid AS gclid,
+      collected_traffic_source.dclid AS dclid,
+      collected_traffic_source.srsltid AS srsltid) AS collected_traffic_source
+  FROM
+    ga
+  LEFT JOIN
+    gads_mix
+  ON
+    ga.collected_traffic_source.gclid = gads_mix.click_view_gclid )
+SELECT
+  *,
+  -- Przesunięcia źródeł ruchu dla wstępnej atrybucji eventowej
+IF
+  (collected_traffic_source.source IS NULL, LAST_VALUE(
+    IF
+      (collected_traffic_source.source IS NOT NULL, collected_traffic_source, NULL) IGNORE NULLS) OVER (PARTITION BY user_pseudo_id ORDER BY event_timestamp ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), collected_traffic_source ) AS last_event_traffic_source
+FROM
+  stg_gclid
+
+pre_operations {
+  DECLARE
+    event_date_checkpoint DEFAULT (
+    ${
+        when(incremental(),
+            `select max(event_date) -6 from ${self()} WHERE event_date >= current_date() - 10`,
+            `select cast('${constants.START_DATE}' as date format 'yyyymmdd')`)
+    }
+    );
+  DECLARE
+    is_active_user bool DEFAULT NULL;
+  CREATE TEMP FUNCTION
+    URLDECODE(value STRING)
+    RETURNS STRING
+    LANGUAGE js AS """
+                try {
+                  return decodeURIComponent(value) === 'null' ? null : decodeURIComponent(value);
+                  } catch (e) {
+                    return value;
+                    }
+                    """;
+                    ${
+                        when(incremental(),
+                            `delete from ${self()} where event_date >= event_date_checkpoint`)
+                    }
+}

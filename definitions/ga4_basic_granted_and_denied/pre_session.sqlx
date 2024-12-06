@@ -24,7 +24,7 @@ WITH
     FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
     LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page
      FROM
-    ${ref('pre_events')}
+    ${ref('events')}
   WHERE
     event_date >= event_date_checkpoint
   GROUP BY 1,2,3,4,5,6,7
@@ -88,12 +88,13 @@ WITH
     COUNTIF(event_name = 'purchase') AS purchase_count,
     SUM(IF(event_name = 'purchase', ecommerce.purchase_revenue, 0)) AS session_revenue
   FROM
-    ${ref('pre_events')}
+    ${ref('events')}
   WHERE
     event_date >= event_date_checkpoint
     AND
  --- tutaj do zastanowienia bo to nam ucina dane zanomizowane
   ga_session_key IS NOT NULL
+  AND user_pseudo_id is NOT NULL
   GROUP BY
     user_key,
     user_pseudo_id,
