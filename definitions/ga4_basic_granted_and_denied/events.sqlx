@@ -45,6 +45,7 @@ WITH
       collected_traffic_source.manual_source_platform AS manual_source_platform,
       collected_traffic_source.manual_creative_format AS manual_creative_format,
       collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
+      collected_traffic_source.gclid as test_gclid,
       IFNULL(REGEXP_EXTRACT(page_location, r'gclid=([^&]*)'), collected_traffic_source.gclid) AS gclid,
       IFNULL(REGEXP_EXTRACT(page_location, r'dclid=([^&]*)'), collected_traffic_source.dclid) AS dclid,
       IFNULL(REGEXP_EXTRACT(page_location, r'srsltid=([^&]*)'), collected_traffic_source.srsltid) AS srsltid ) AS collected_traffic_source
@@ -124,6 +125,7 @@ WITH
       collected_traffic_source.manual_content AS manual_content,
       collected_traffic_source.manual_term AS manual_term,
       collected_traffic_source.gclid,
+      collected_traffic_source.test_gclid,
       collected_traffic_source.dclid,
       collected_traffic_source.manual_source_platform AS manual_source_platform,
       collected_traffic_source.manual_creative_format AS manual_creative_format,
@@ -191,6 +193,7 @@ WITH
       collected_traffic_source.manual_creative_format AS manual_creative_format,
       collected_traffic_source.manual_marketing_tactic AS manual_marketing_tactic,
       collected_traffic_source.gclid AS gclid,
+      collected_traffic_source.gclid as test_gclid,
       collected_traffic_source.dclid AS dclid,
       collected_traffic_source.srsltid AS srsltid) AS collected_traffic_source
   FROM
