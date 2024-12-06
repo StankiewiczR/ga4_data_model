@@ -208,7 +208,9 @@ SELECT
 IF
   (collected_traffic_source.source IS NULL, LAST_VALUE(
     IF
-      (collected_traffic_source.source IS NOT NULL, collected_traffic_source, NULL) IGNORE NULLS) OVER (PARTITION BY user_pseudo_id ORDER BY event_timestamp ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), collected_traffic_source ) AS last_event_traffic_source
+      (collected_traffic_source.source IS NOT NULL, collected_traffic_source, NULL) IGNORE NULLS) OVER (PARTITION BY user_pseudo_id ORDER BY event_timestamp ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), collected_traffic_source ) AS last_event_traffic_source,
+    FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
+    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page      
 FROM
   stg_gclid
 
