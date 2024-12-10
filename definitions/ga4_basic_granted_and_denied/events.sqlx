@@ -210,7 +210,42 @@ IF
     IF
       (collected_traffic_source.source IS NOT NULL, collected_traffic_source, NULL) IGNORE NULLS) OVER (PARTITION BY user_pseudo_id ORDER BY event_timestamp ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), collected_traffic_source ) AS last_event_traffic_source,
     FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
-    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page      
+    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page,
+CASE
+WHEN (regexp_contains(collected_traffic_source.source, 'alibaba|amazon|google shopping|shopify|etsy|ebay|stripe|walmart')
+              or regexp_contains(collected_traffic_source.source, '^(.*(([^a-df-z]|^)shop|shopping).*)$'))
+             and regexp_contains(collected_traffic_source.medium, '^(.*cp.*|ppc|paid.*)$') then 'paid shopping'
+when regexp_contains(collected_traffic_source.source, 'baidu|bing|duckduckgo|ecosia|google|yahoo|yandex|seznam')
+             and regexp_contains(collected_traffic_source.medium, '^(.*cp.*|ppc|paid.*)$') then 'paid search'
+when regexp_contains(collected_traffic_source.source, 'badoo|facebook|fb|instagram|linkedin|pinterest|tiktok|twitter|whatsapp|meta(.*)?')
+             and regexp_contains(collected_traffic_source.medium, '^(.*cp.*|ppc|paid.*)$') then 'paid social'
+when collected_traffic_source.medium = 'retargeting' then 'retargeting'
+when regexp_contains(collected_traffic_source.source, 'dailymotion|disneyplus|netflix|youtube|vimeo|twitch|vimeo|youtube')
+             and regexp_contains(collected_traffic_source.medium, '^(.*cp.*|ppc|paid.*)$') then 'paid video'
+when collected_traffic_source.medium in ('display', 'banner', 'expandable', 'interstitial', 'cpm') then 'display'
+when regexp_contains(collected_traffic_source.source, 'alibaba|amazon|google shopping|shopify|etsy|ebay|stripe|walmart')
+             or regexp_contains(collected_traffic_source.source, '^(.*(([^a-df-z]|^)shop|shopping).*)$') then 'organic shopping'
+when regexp_contains(collected_traffic_source.source, 'badoo|facebook|fb|instagram|linkedin|pinterest|tiktok|twitter|whatsapp')
+             or collected_traffic_source.medium in ('social', 'social-network', 'social-media', 'sm', 'social network', 'social media') then 'organic social'
+when regexp_contains(collected_traffic_source.source, 'dailymotion|disneyplus|netflix|youtube|vimeo|twitch|vimeo|youtube')
+             or regexp_contains(collected_traffic_source.medium, '^(.*video.*)$') then 'organic video'
+when regexp_contains(collected_traffic_source.source, 'baidu|bing|duckduckgo|ecosia|google|yahoo|yandex')
+             or collected_traffic_source.medium = 'organic' then 'organic search'
+when regexp_contains(collected_traffic_source.source, 'ceneo|skapiec|arukereso.hu') 
+            or collected_traffic_source.medium = 'comparison' THEN 'price comparison referral'
+when regexp_contains(collected_traffic_source.source, r'pepper') THEN 'pepper'
+when regexp_contains(collected_traffic_source.source, 'email|e-mail|e_mail|e mail')
+             or regexp_contains(collected_traffic_source.medium, 'email|e-mail|e_mail|e mail') then 'email'
+when collected_traffic_source.medium = 'affiliate' then 'affiliates'
+when collected_traffic_source.medium = 'referral' then 'referral'
+when collected_traffic_source.medium = 'audio' then 'audio'
+when collected_traffic_source.medium = 'sms' then 'sms'
+when collected_traffic_source.medium like '%push'
+             or regexp_contains(collected_traffic_source.medium, 'mobile|notification') then 'mobile push notifications'
+WHEN IFNULL(collected_traffic_source.source, '(direct)') IN ('(direct)', '(not set)') 
+            AND IFNULL(collected_traffic_source.medium, '(none)') IN ('(not set)', '(none)') THEN 'direct'
+ELSE 'unassigned'
+END AS channel 
 FROM
   stg_gclid
 
