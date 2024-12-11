@@ -49,7 +49,7 @@ WITH
     (COALESCE(NULLIF(first_traffic_source.source, '(direct)'), NULLIF(first_traffic_source.medium, '(none)'), NULLIF(first_traffic_source.manual_campaign_name, '(direct)')) IS NULL, LAST_VALUE(
       IF
         (COALESCE(NULLIF(last_non_null_traffic_source.source, '(direct)'), NULLIF(last_non_null_traffic_source.medium, '(none)'), NULLIF(last_non_null_traffic_source.manual_campaign_name, '(direct)')) IS NOT NULL, last_non_null_traffic_source, NULL) IGNORE NULLS) OVER(PARTITION BY user_key ORDER BY ga_session_id RANGE BETWEEN ${constants.SESSION_LOOKBACK_WINDOW} PRECEDING AND 1 PRECEDING ), first_traffic_source ) AS last_non_direct_traffic_source,
-  FIRST_VALUE( first_traffic_source) OVER(PARTITION BY user_key ORDER BY ga_session_id RANGE BETWEEN ${constants.SESSION_LOOKBACK_WINDOW} PRECEDING AND 1 PRECEDING ) ) AS first_traffic_source_with_direct,
+  FIRST_VALUE( first_traffic_source) OVER(PARTITION BY user_key ORDER BY ga_session_id RANGE BETWEEN ${constants.SESSION_LOOKBACK_WINDOW} PRECEDING AND 1 PRECEDING )  AS first_traffic_source_with_direct,
   FIRST_VALUE( first_traffic_source IGNORE NULLS) OVER(PARTITION BY user_key ORDER BY ga_session_id RANGE BETWEEN ${constants.SESSION_LOOKBACK_WINDOW} PRECEDING AND 1 PRECEDING )  AS first_not_direct_traffic_source
 FROM
   sessions )
