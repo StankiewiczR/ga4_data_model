@@ -101,7 +101,7 @@ pre_operations {
         event_date_checkpoint DEFAULT (
         ${
             when(incremental(),
-                `SELECT MAX(session_start_date) - 3 FROM ${self()} WHERE session_start_date >= current_date() - 10`,
+                `SELECT MAX(session_start_date) - 6 FROM ${self()} WHERE session_start_date >= current_date() - 10`,
                 `SELECT PARSE_DATE('%Y%m%d', '${constants.START_DATE}')`)
         }
         ); ${when(incremental(), `DELETE FROM ${self()} WHERE session_start_date >= event_date_checkpoint`)}

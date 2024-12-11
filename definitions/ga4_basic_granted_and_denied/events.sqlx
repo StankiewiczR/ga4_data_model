@@ -195,23 +195,8 @@ WITH
       collected_traffic_source.gclid AS gclid,
       collected_traffic_source.gclid as test_gclid,
       collected_traffic_source.dclid AS dclid,
-      collected_traffic_source.srsltid AS srsltid) AS collected_traffic_source
-  FROM
-    ga
-  LEFT JOIN
-    gads_mix
-  ON
-    ga.collected_traffic_source.gclid = gads_mix.click_view_gclid )
-SELECT
-  *,
-  -- Przesunięcia źródeł ruchu dla wstępnej atrybucji eventowej
-IF
-  (collected_traffic_source.source IS NULL, LAST_VALUE(
-    IF
-      (collected_traffic_source.source IS NOT NULL, collected_traffic_source, NULL) IGNORE NULLS) OVER (PARTITION BY user_pseudo_id ORDER BY event_timestamp ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), collected_traffic_source ) AS last_event_traffic_source,
-    FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
-    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page,
-CASE
+      collected_traffic_source.srsltid AS srsltid,
+      CASE
 WHEN (regexp_contains(collected_traffic_source.source, 'alibaba|amazon|google shopping|shopify|etsy|ebay|stripe|walmart')
               or regexp_contains(collected_traffic_source.source, '^(.*(([^a-df-z]|^)shop|shopping).*)$'))
              and regexp_contains(collected_traffic_source.medium, '^(.*cp.*|ppc|paid.*)$') then 'paid shopping'
@@ -245,7 +230,22 @@ when collected_traffic_source.medium like '%push'
 WHEN IFNULL(collected_traffic_source.source, '(direct)') IN ('(direct)', '(not set)') 
             AND IFNULL(collected_traffic_source.medium, '(none)') IN ('(not set)', '(none)') THEN 'direct'
 ELSE 'unassigned'
-END AS channel 
+END AS channel ) AS collected_traffic_source
+  FROM
+    ga
+  LEFT JOIN
+    gads_mix
+  ON
+    ga.collected_traffic_source.gclid = gads_mix.click_view_gclid )
+SELECT
+  *,
+  -- Przesunięcia źródeł ruchu dla wstępnej atrybucji eventowej
+IF
+  (collected_traffic_source.source IS NULL, LAST_VALUE(
+    IF
+      (collected_traffic_source.source IS NOT NULL, collected_traffic_source, NULL) IGNORE NULLS) OVER (PARTITION BY user_pseudo_id ORDER BY event_timestamp ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), collected_traffic_source ) AS last_event_traffic_source,
+    FIRST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp ASC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS landing_page,
+    LAST_VALUE(page_location) OVER (PARTITION BY user_pseudo_id, ga_session_id ORDER BY event_timestamp DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS exit_page
 FROM
   stg_gclid
 

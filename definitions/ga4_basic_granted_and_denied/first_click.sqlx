@@ -1,0 +1,39 @@
+config {
+    type: "table",
+    schema: constants.ATTRIBUTION_DATASET
+}
+
+WITH raw AS (
+    SELECT * FROM 
+    ${ref('raw')}
+),
+-- wyciągamy pierwszą sesję z source, medium i channel
+unaggregated as(    
+    SELECT 
+        user_pseudo_id,
+        conversion_timestamp,
+        --sessions_array[OFFSET(0)].source AS first_click_source,
+        --sessions_array[OFFSET(0)].medium AS first_click_medium,
+        concat(sessions_array[OFFSET(0)].source, " / ", sessions_array[OFFSET(0)].medium) as    source_medium,
+        sessions_array[OFFSET(0)].channel AS channel,
+        sessions_array[OFFSET(0)].session_id AS first_click_session_id,
+        sessions_array[OFFSET(0)].session_timestamp AS session_timestamp
+    FROM (
+        SELECT 
+            user_pseudo_id,
+            conversion_timestamp,
+            ARRAY_AGG(session ORDER BY session.session_timestamp ASC) AS sessions_array
+        FROM raw, UNNEST(sessions_array) AS session
+        GROUP BY user_pseudo_id, conversion_timestamp
+    )
+)
+
+select 
+channel,
+--source_medium,
+count(conversion_timestamp) as conversions
+from 
+unaggregated
+group by 1
+--,2
+order by conversions desc

@@ -1,0 +1,59 @@
+config {
+    type: "table",
+    schema: constants.ATTRIBUTION_DATASET
+}
+
+
+WITH raw AS (
+    SELECT * FROM 
+    ${ref('raw')}
+),
+sessions_with_count AS (
+    -- Krok 1: Rozwijamy `sessions_array` dla każdej konwersji i liczymy sesje dla każdej konwersji
+    SELECT 
+        user_pseudo_id,
+        conversion_timestamp,
+        CONCAT(session.source, " / ", session.medium) AS source_medium,
+        session.channel AS channel,
+        session.session_id AS session_id,
+        session.session_timestamp AS session_timestamp,
+        COUNT(*) OVER(PARTITION BY user_pseudo_id, conversion_timestamp) AS session_count
+    FROM raw,
+    UNNEST(sessions_array) AS session
+),
+
+linear_attribution AS (
+    -- Krok 2: Obliczamy równą wartość atrybucji dla każdej sesji przed konwersją
+    SELECT 
+        user_pseudo_id,
+        conversion_timestamp,
+        source_medium,
+        channel,
+        session_id,
+        session_timestamp,
+        1.0 / session_count AS attribution_value
+    FROM sessions_with_count
+),
+
+unaggregated as (
+SELECT 
+    user_pseudo_id,
+    conversion_timestamp,
+    source_medium,
+    channel,
+    session_id,
+    session_timestamp,
+    attribution_value
+FROM linear_attribution
+ORDER BY user_pseudo_id, conversion_timestamp, session_timestamp
+)
+
+select 
+channel,
+--source_medium,
+round(sum(attribution_value),0) as conversions
+from 
+unaggregated
+group by 1
+--,2
+order by conversions desc

@@ -1,0 +1,99 @@
+config {
+    type: "table",
+    schema: constants.ATTRIBUTION_DATASET
+}
+
+
+WITH prep AS (
+    SELECT 
+        session_start_datetime AS session_start,
+        user_pseudo_id,
+        ga_session_id as session_id,
+        first_traffic_source.source as source,
+        first_traffic_source.medium as medium,
+        first_traffic_source.manual_campaign_name as campaign_name,
+        first_traffic_source.channel,
+        purchase_count
+    FROM 
+         ${ref('pre_session')}
+),
+
+-- CTE z transakcjami
+conversion_data AS (
+    SELECT 
+        user_pseudo_id,
+        session_id AS conversion_session_id,
+        session_start AS conversion_timestamp
+    FROM prep
+    WHERE purchase_count > 0
+    and user_pseudo_id is not null
+),
+
+-- CTE z sesjami
+session_data AS (
+    SELECT 
+        user_pseudo_id,
+        session_id,
+        session_start AS session_timestamp,
+        source,
+        medium,
+        campaign_name,
+        channel 
+    FROM prep
+),
+
+-- Wybieramy sesje w oknie x dni (DEFAULT=30) przed konwersją
+sessions_in_conversion_window AS (
+    SELECT
+        c.user_pseudo_id,
+        c.conversion_session_id,
+        c.conversion_timestamp,
+        ARRAY_AGG(
+            STRUCT(
+                s.session_id,
+                s.session_timestamp,
+                s.source,
+                s.medium,
+                s.campaign_name,
+                s.channel  -- dodanie kolumn do struktury w tablicy
+            ) 
+            ORDER BY s.session_timestamp DESC
+        ) AS sessions_array
+    FROM
+        conversion_data c
+    JOIN
+        session_data s
+    ON
+        c.user_pseudo_id = s.user_pseudo_id
+        AND s.session_timestamp <= c.conversion_timestamp
+        AND s.session_timestamp >= TIMESTAMP_SUB(c.conversion_timestamp, INTERVAL 30 DAY) -- okno konwersji
+    LEFT JOIN (
+        SELECT
+            user_pseudo_id,
+            MIN(conversion_timestamp) AS first_conversion_timestamp
+        FROM
+            conversion_data
+        GROUP BY
+            user_pseudo_id
+    ) AS first_conversion
+    ON c.user_pseudo_id = first_conversion.user_pseudo_id
+    AND c.conversion_timestamp = first_conversion.first_conversion_timestamp
+    WHERE
+        (first_conversion.first_conversion_timestamp IS NULL
+        OR s.session_timestamp <= first_conversion.first_conversion_timestamp)
+    GROUP BY
+        c.user_pseudo_id,
+        c.conversion_session_id,
+        c.conversion_timestamp
+)
+
+-- Końcowy wybór z dodanymi kolumnami source, medium i channel w sessions_array
+SELECT
+    user_pseudo_id,
+    conversion_timestamp,
+    sessions_array 
+FROM
+    sessions_in_conversion_window
+ORDER BY
+    user_pseudo_id,
+    conversion_timestamp
